@@ -1,14 +1,13 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     application
 
-    kotlin("jvm")
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin)
+    alias(libs.plugins.serialization)
 
-    id("com.github.jakemarsden.git-hooks")
-    id("com.github.johnrengelman.shadow")
-    id("io.gitlab.arturbosch.detekt")
+    alias(libs.plugins.shadow)
 }
 
 group = "template"
@@ -30,11 +29,10 @@ repositories {
 }
 
 dependencies {
-    detektPlugins(libs.detekt)
-
     implementation(libs.kord.extensions)
     implementation(libs.kotlin.stdlib)
     implementation(libs.kx.ser)
+    implementation(libs.bundles.ktor)
 
     // Logging dependencies
     implementation(libs.groovy)
@@ -45,20 +43,13 @@ dependencies {
 
 application {
     // This is deprecated, but the Shadow plugin requires it
+    @Suppress("DEPRECATION")
     mainClassName = "template.AppKt"
-}
-
-gitHooks {
-    setHooks(
-        mapOf("pre-commit" to "detekt")
-    )
 }
 
 tasks.withType<KotlinCompile> {
     // Current LTS version of Java
     kotlinOptions.jvmTarget = "11"
-
-    kotlinOptions.freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
 }
 
 tasks.jar {
@@ -73,9 +64,4 @@ java {
     // Current LTS version of Java
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
-}
-
-detekt {
-    buildUponDefaultConfig = true
-    config = rootProject.files("detekt.yml")
 }

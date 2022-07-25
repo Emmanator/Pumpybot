@@ -6,33 +6,34 @@ package template
 import com.kotlindiscord.kord.extensions.ExtensibleBot
 import com.kotlindiscord.kord.extensions.utils.env
 import dev.kord.common.entity.Snowflake
-import template.extensions.TestExtension
+import dev.kord.gateway.Intent
+import dev.kord.gateway.Intents
+import dev.kord.gateway.PrivilegedIntent
+import template.extensions.*
 
 val TEST_SERVER_ID = Snowflake(
-    env("TEST_SERVER").toLong()  // Get the test server ID from the env vars or a .env file
+    env("TEST_SERVER")  // Get the test server ID from the env vars or a .env file
 )
 
-private val TOKEN = env("TOKEN")   // Get the bot' token from the env vars or a .env file
+private val TOKEN = env("BOT_TOKEN")   // Get the bot' token from the env vars or a .env file
 
+@OptIn(PrivilegedIntent::class)
 suspend fun main() {
     val bot = ExtensibleBot(TOKEN) {
-        chatCommands {
-            defaultPrefix = "?"
-            enabled = true
-
-            prefix { default ->
-                if (guildId == TEST_SERVER_ID) {
-                    // For the test server, we use ! as the command prefix
-                    "!"
-                } else {
-                    // For other servers, we use the configured default prefix
-                    default
-                }
-            }
+        extensions {
+            add(::EightBallExtension)
+            add(::FilteredChannelExtension)
+            add(::MonitorExtension)
+            add(::StatusExtension)
+            add(::NSFWImageExtension)
+            add(::SFWImageExtension)
         }
 
-        extensions {
-            add(::TestExtension)
+        presence { playing("haha ball") }
+
+        intents {
+            +Intents.nonPrivileged
+            +Intent.MessageContent
         }
     }
 

@@ -3,7 +3,7 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="ENVIRONMENT" value="dev" />
+          <entry key="ENVIRONMENT" value="production" />
         </map>
       </option>
       <option name="executionName" />
