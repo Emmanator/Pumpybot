@@ -1,4 +1,4 @@
-package template.extensions
+package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.commands.Arguments
 import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalString
@@ -25,7 +25,7 @@ class EightBallExtension : Extension() {
     override val name = "8 Ball"
 
     override suspend fun setup() {
-        publicSlashCommand(::EightBallArgs) {
+        publicSlashCommand(EightBallExtension::EightBallArgs) {
             name = "ball"
             description = "Ask the magic ball for an answer"
 

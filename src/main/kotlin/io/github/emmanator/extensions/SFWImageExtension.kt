@@ -1,4 +1,4 @@
-package template.extensions
+package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.commands.Arguments
 import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingStringChoice

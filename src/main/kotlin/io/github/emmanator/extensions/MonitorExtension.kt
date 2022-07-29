@@ -1,4 +1,4 @@
-package template.extensions
+package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.event

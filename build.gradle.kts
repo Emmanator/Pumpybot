@@ -10,7 +10,7 @@ plugins {
     alias(libs.plugins.shadow)
 }
 
-group = "template"
+group = "io.github.emmanator"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -44,7 +44,7 @@ dependencies {
 application {
     // This is deprecated, but the Shadow plugin requires it
     @Suppress("DEPRECATION")
-    mainClassName = "template.AppKt"
+    mainClassName = "io.github.emmanator.AppKt"
 }
 
 tasks.withType<KotlinCompile> {
@@ -55,7 +55,7 @@ tasks.withType<KotlinCompile> {
 tasks.jar {
     manifest {
         attributes(
-            "Main-Class" to "template.AppKt"
+            "Main-Class" to "io.github.emmanator.AppKt"
         )
     }
 }

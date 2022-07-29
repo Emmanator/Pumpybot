@@ -1,7 +1,8 @@
-package template.extensions
+package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.checks.channelIsNsfw
 import com.kotlindiscord.kord.extensions.commands.Arguments
+import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingStringChoice
 import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalString
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
@@ -17,7 +18,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import template.TEST_SERVER_ID
+import io.github.emmanator.TEST_SERVER_ID
 
 
 class NSFWImageExtension : Extension() {
@@ -36,7 +37,7 @@ class NSFWImageExtension : Extension() {
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
         ).forEach { spec ->
-            publicSlashCommand(::TagArguments) {
+            publicSlashCommand(NSFWImageExtension::NSFWCommandArguments) {
                 name = spec.name
                 description = spec.description
 
@@ -48,7 +49,8 @@ class NSFWImageExtension : Extension() {
 
                 action {
                     try {
-                        when (val result = spec.get(client, arguments.tags.orEmpty().split(',').map { it.trim() })) {
+                        when (val result =
+                            spec.get(client, arguments.tags.orEmpty().split(',').map { it.trim() }, arguments.rating)) {
                             is ImageResult.Success -> {
                                 respond {
                                     if (result.url.substringAfterLast(".") !in listOf("webm", "mp4")) {
@@ -61,6 +63,7 @@ class NSFWImageExtension : Extension() {
                                     }
                                 }
                             }
+
                             is ImageResult.Failure -> {
                                 respond {
                                     content = "Request failed (reason: ${result.reason})"
@@ -81,12 +84,12 @@ class NSFWImageExtension : Extension() {
         val name: String,
         val description: String
     ) {
-        abstract suspend fun get(client: HttpClient, tags: List<String>): ImageResult
+        abstract suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult
 
         object Danbooru : NSFWImageCommands("Danbooru", "get an explicit image from danbooru") {
-            override suspend fun get(client: HttpClient, tags: List<String>): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
                 val response: DanbooruResponse = client.get("https://danbooru.donmai.us/posts/random.json") {
-                    val tagString = (tags + "rating:e").joinToString(separator = " ") {
+                    val tagString = (tags + "rating:$rating").joinToString(separator = " ") {
                         it.replace(' ', '_')
                     }
 
@@ -113,9 +116,14 @@ class NSFWImageExtension : Extension() {
         }
 
         object E621 : NSFWImageCommands("E621", "get an explicit image from E621") {
-            override suspend fun get(client: HttpClient, tags: List<String>): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
+                val ratingTag = when (rating) {
+                    "general" -> "safe"
+                    "sensitive" -> "questionable"
+                    else -> rating
+                }
                 val response: E6Response = client.get("https://e621.net/posts/random.json") {
-                    val tagString = (tags + "rating:e").joinToString(separator = " ") {
+                    val tagString = (tags + "rating:$ratingTag").joinToString(separator = " ") {
                         it.replace(' ', '_')
                     }
 
@@ -156,12 +164,13 @@ class NSFWImageExtension : Extension() {
         }
 
         object Gelbooru : NSFWImageCommands("Gelbooru", "get an explicit image from gelbooru") {
-            override suspend fun get(client: HttpClient, tags: List<String>): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
                 val response: GelResponse =
                     client.get("https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1&limit=1") {
-                        val tagString = (tags + "rating:explicit" + "sort:random").joinToString(separator = " ") {
-                            it.replace(' ', '_')
-                        }
+                        val tagString =
+                            (tags + "rating:$rating" + "sort:random").joinToString(separator = " ") {
+                                it.replace(' ', '_')
+                            }
                         parameter("tags", tagString)
                     }.also { println(it.request.url) }.body()
 
@@ -209,10 +218,24 @@ class NSFWImageExtension : Extension() {
         }
     }
 
-    class TagArguments : Arguments() {
+    class NSFWCommandArguments : Arguments() {
         val tags by optionalString {
             name = "tags"
             description = "give tags seperated by commas or leave empty"
+        }
+
+        val rating by defaultingStringChoice {
+            name = "Rating"
+            description = "Select rating"
+
+            defaultValue = "explicit"
+
+            choices = listOf(
+                "explicit",
+                "questionable",
+                "sensitive",
+                "general"
+            ).associateBy { it.uppercase() }.toMutableMap()
         }
     }
 
