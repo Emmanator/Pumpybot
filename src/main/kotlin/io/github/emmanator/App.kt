@@ -27,7 +27,6 @@ suspend fun main() {
             add(::StatusExtension)
             add(::NSFWImageExtension)
             add(::SFWImageExtension)
-            add(::TestExtension)
         }
 
         presence { playing("haha ball") }
