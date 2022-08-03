@@ -7,6 +7,7 @@ import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalString
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.respond
+import com.kotlindiscord.kord.extensions.utils.capitalizeWords
 import com.kotlindiscord.kord.extensions.utils.delete
 import dev.kord.rest.builder.message.create.embed
 import io.ktor.client.*
@@ -225,7 +226,7 @@ class NSFWImageExtension : Extension() {
         }
 
         val rating by defaultingStringChoice {
-            name = "Rating"
+            name = "rating"
             description = "Select rating"
 
             defaultValue = "explicit"
@@ -235,7 +236,7 @@ class NSFWImageExtension : Extension() {
                 "questionable",
                 "sensitive",
                 "general"
-            ).associateBy { it.uppercase() }.toMutableMap()
+            ).associateBy { it.capitalizeWords() }.toMutableMap()
         }
     }
 

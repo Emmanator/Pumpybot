@@ -26,7 +26,7 @@ class MonitorExtension : Extension() {
 
                 failIfNot("Random event skip") {
                     Random.nextInt(10) == 0
-                }
+                }.also { println(it) }
             }
 
             action {

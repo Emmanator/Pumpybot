@@ -1,11 +1,9 @@
 package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.commands.Arguments
-import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingStringChoice
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.respond
-import com.kotlindiscord.kord.extensions.utils.capitalizeWords
 import dev.kord.rest.builder.message.create.embed
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -49,6 +47,7 @@ class SFWImageExtension : Extension() {
                             }
                         }
                     }
+
                     is ImageResult.Failure -> {
                         respond {
                             content = "Request failed (reason: ${result.reason})"
@@ -87,9 +86,9 @@ class SFWImageExtension : Extension() {
             )
         }
 
-        object Neko : CommandSpec<Neko.NekoArgs>("neko", "Random neko!") {
-            override suspend fun get(client: HttpClient, arguments: NekoArgs): ImageResult {
-                val response: NekoResponse = client.get("https://neko-love.xyz/api/v1/${arguments.type}").body()
+        object Neko : CommandSpec<Arguments>("Neko", "Random neko!") {
+            override suspend fun get(client: HttpClient, arguments: Arguments): ImageResult {
+                val response: NekoResponse = client.get("https://neko-love.xyz/api/v1/neko").body()
 
                 return ImageResult.Success(
                     response.url,
@@ -97,14 +96,14 @@ class SFWImageExtension : Extension() {
                 )
             }
 
-            override fun createArgs() = NekoArgs()
+            override fun createArgs() = Arguments()
 
             @Serializable
             data class NekoResponse(
                 val url: String
             )
 
-            class NekoArgs : Arguments() {
+            /*class NekoArgs : Arguments() {
                 val type by defaultingStringChoice {
                     name = "Type"
                     description = "Image type"
@@ -123,8 +122,8 @@ class SFWImageExtension : Extension() {
                     ).associateBy { it.capitalizeWords() }.toMutableMap()
 
                     defaultValue = "neko"
-                }
-            }
+                }*/
+
         }
     }
 
