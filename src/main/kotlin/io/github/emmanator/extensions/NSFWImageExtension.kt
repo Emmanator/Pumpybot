@@ -222,12 +222,12 @@ class NSFWImageExtension : Extension() {
     class NSFWCommandArguments : Arguments() {
         val tags by optionalString {
             name = "tags"
-            description = "give tags seperated by commas or leave empty"
+            description = "Give tags seperated by commas or leave empty."
         }
 
         val rating by defaultingStringChoice {
             name = "rating"
-            description = "Select rating"
+            description = "Select rating."
 
             defaultValue = "explicit"
 
