@@ -20,10 +20,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import io.github.emmanator.TEST_SERVER_ID
+import mu.KotlinLogging
 
 
 class NSFWImageExtension : Extension() {
+    private val logger = KotlinLogging.logger {}
+
     override val name = "Feet Generator"
+
     private val client = HttpClient {
         install(ContentNegotiation) {
             json(Json {
@@ -34,7 +38,8 @@ class NSFWImageExtension : Extension() {
 
     override suspend fun setup() {
         listOf(
-            NSFWImageCommands.Danbooru,
+            NSFWImageCommands.Moebooru("https://danbooru.donmai.us/posts", "Danbooru"),
+            NSFWImageCommands.KonaChan,
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
         ).forEach { spec ->
@@ -71,7 +76,9 @@ class NSFWImageExtension : Extension() {
                                 }.delete(5000)
                             }
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        logger.debug(e) { "Error while requesting image" }
+
                         respond {
                             content = "Error while looking up, image with tags may not exist"
                         }.delete(5000)
@@ -87,9 +94,10 @@ class NSFWImageExtension : Extension() {
     ) {
         abstract suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult
 
-        object Danbooru : NSFWImageCommands("Danbooru", "get an explicit image from danbooru") {
+        class Moebooru(val baseUrl: String, name: String) :
+            NSFWImageCommands(name, "get an explicit image from danbooru") {
             override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
-                val response: DanbooruResponse = client.get("https://danbooru.donmai.us/posts/random.json") {
+                val response: MoebooruResponse = client.get("$baseUrl/random.json") {
                     val tagString = (tags + "rating:$rating").joinToString(separator = " ") {
                         it.replace(' ', '_')
                     }
@@ -108,12 +116,42 @@ class NSFWImageExtension : Extension() {
             }
 
             @Serializable
-            data class DanbooruResponse(
+            data class MoebooruResponse(
                 @SerialName("large_file_url") val urlLarge: String = "",
                 @SerialName("file_url") val url: String = "",
                 @SerialName("tag_string_artist") val artist: String = ""
             )
 
+        }
+
+        object KonaChan : NSFWImageCommands("Konachan", "get an explicit image from Konachan") {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
+                val response: List<KonaChanResponse> = client.get("https://konachan.com/post.json") {
+                    val tagString = (tags + "rating:$rating" + "order:random").joinToString(separator = " ") {
+                        it.replace(' ', '_')
+                    }
+
+                    parameter("tags", tagString)
+                    parameter("limit", 1)
+                }.also { println(it.request.url) }.body()
+
+                val image = response.firstOrNull()
+                    ?: return ImageResult.Failure("No images with given tags")
+
+                if (image.url.isBlank()) {
+                    return ImageResult.Failure("Image has no URL or invalid tag")
+                }
+
+                return ImageResult.Success(
+                    response.first().url,
+                    null
+                )
+            }
+
+            @Serializable
+            data class KonaChanResponse(
+                @SerialName("file_url") val url: String = "",
+            )
         }
 
         object E621 : NSFWImageCommands("E621", "get an explicit image from E621") {
