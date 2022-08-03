@@ -5,23 +5,33 @@ import com.kotlindiscord.kord.extensions.commands.Arguments
 import com.kotlindiscord.kord.extensions.commands.application.slash.converters.ChoiceEnum
 import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingEnumChoice
 import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalString
+import com.kotlindiscord.kord.extensions.components.components
+import com.kotlindiscord.kord.extensions.components.publicButton
+import com.kotlindiscord.kord.extensions.components.types.emoji
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.respond
+import com.kotlindiscord.kord.extensions.types.respondEphemeral
 import com.kotlindiscord.kord.extensions.utils.capitalizeWords
-import com.kotlindiscord.kord.extensions.utils.delete
-import dev.kord.rest.builder.message.create.embed
+import dev.kord.common.entity.ButtonStyle
+import dev.kord.core.behavior.edit
+import dev.kord.core.behavior.interaction.followup.edit
+import dev.kord.rest.builder.message.modify.MessageModifyBuilder
+import dev.kord.rest.builder.message.modify.embed
+import io.github.emmanator.TEST_SERVER_ID
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.time.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import io.github.emmanator.TEST_SERVER_ID
 import mu.KotlinLogging
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 
 class NSFWImageExtension : Extension() {
@@ -42,6 +52,7 @@ class NSFWImageExtension : Extension() {
             NSFWImageCommands.Moebooru("https://danbooru.donmai.us/posts", "Danbooru"),
             NSFWImageCommands.Boorulike("https://konachan.com", "KonaChan"),
             NSFWImageCommands.Boorulike("https://yande.re", "Yandere"),
+            //NSFWImageCommands.Boorulike("https://xbooru.com", "xbooru"), This doesn't work, weird site
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
         ).forEach { spec ->
@@ -56,37 +67,93 @@ class NSFWImageExtension : Extension() {
                 guild(TEST_SERVER_ID)
 
                 action {
-                    try {
-                        when (val result =
-                            spec.get(client, arguments.tags.orEmpty().split(',').map { it.trim() }, arguments.rating)) {
-                            is ImageResult.Success -> {
-                                respond {
-                                    if (result.url.substringAfterLast(".") !in listOf("webm", "mp4")) {
-                                        embed {
-                                            title = "By ${result.artist ?: "unknown"}"
-                                            image = result.url
+                    val commandUser = user
+
+                    val message = respond {
+                        content = "Please wait..."
+
+                        components {
+                            publicButton {
+                                emoji("\uD83D\uDD01")
+                                style = ButtonStyle.Secondary
+
+                                action {
+                                    if (user == commandUser) {
+                                        message.edit {
+                                            setContent(spec, arguments)
                                         }
                                     } else {
-                                        content = "By ${result.artist ?: "unknown"}: ${result.url}"
+                                        respondEphemeral {
+                                            content = "Not your embed"
+                                        }
                                     }
                                 }
                             }
 
-                            is ImageResult.Failure -> {
-                                respond {
-                                    content = "Request failed (reason: ${result.reason})"
-                                }.delete(5000)
+                            publicButton {
+                                emoji("\uD83D\uDEAE")
+                                style = ButtonStyle.Danger
+
+                                action {
+                                    if (user == commandUser) {
+                                        message.delete()
+                                    } else {
+                                        respondEphemeral {
+                                            content = "Not your embed lmao"
+                                        }
+                                    }
+                                }
                             }
                         }
-                    } catch (e: Exception) {
-                        logger.debug(e) { "Error while requesting image" }
+                    }
 
-                        respond {
-                            content = "Error while looking up, image with tags may not exist"
-                        }.delete(5000)
+                    message.edit {
+                        setContent(spec, arguments)
+                    }
+
+                    delay(30.seconds.toJavaDuration())
+
+                    message.edit {
+                        components = mutableListOf()
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun MessageModifyBuilder.setContent(spec: NSFWImageCommands, arguments: NSFWCommandArguments) {
+        try {
+            when (val result =
+                spec.get(
+                    client,
+                    arguments.tags.orEmpty().split(',').map { it.trim() },
+                    arguments.rating
+                )) {
+                is ImageResult.Success -> {
+                    if (result.url.substringAfterLast(".") !in listOf("webm", "mp4")) {
+                        content = null
+
+                        embed {
+                            title = "By ${result.artist ?: "unknown"}"
+                            image = result.url
+                        }
+                    } else {
+                        embeds = mutableListOf()
+                        content = "By ${result.artist ?: "unknown"}: ${result.url}"
+                    }
+                }
+
+                is ImageResult.Failure -> {
+                    embeds = mutableListOf()
+                    content = "Request failed (reason: ${result.reason})"
+                }
+            }
+        } catch (e: Exception) {
+            logger.debug(e) { "Error while requesting image" }
+
+            embeds = mutableListOf()
+            content = "Error while looking up, image with tags may not exist"
+
         }
     }
 
@@ -302,6 +369,3 @@ class NSFWImageExtension : Extension() {
         ) : ImageResult()
     }
 }
-
-
-
