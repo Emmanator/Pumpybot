@@ -2,7 +2,8 @@ package io.github.emmanator.extensions
 
 import com.kotlindiscord.kord.extensions.checks.channelIsNsfw
 import com.kotlindiscord.kord.extensions.commands.Arguments
-import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingStringChoice
+import com.kotlindiscord.kord.extensions.commands.application.slash.converters.ChoiceEnum
+import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingEnumChoice
 import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalString
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
@@ -39,7 +40,8 @@ class NSFWImageExtension : Extension() {
     override suspend fun setup() {
         listOf(
             NSFWImageCommands.Moebooru("https://danbooru.donmai.us/posts", "Danbooru"),
-            NSFWImageCommands.KonaChan,
+            NSFWImageCommands.Boorulike("https://konachan.com", "KonaChan"),
+            NSFWImageCommands.Boorulike("https://yande.re", "Yandere"),
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
         ).forEach { spec ->
@@ -92,13 +94,13 @@ class NSFWImageExtension : Extension() {
         val name: String,
         val description: String
     ) {
-        abstract suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult
+        abstract suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult
 
-        class Moebooru(val baseUrl: String, name: String) :
+        class Moebooru(private val baseUrl: String, name: String) :
             NSFWImageCommands(name, "get an explicit image from danbooru") {
-            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val response: MoebooruResponse = client.get("$baseUrl/random.json") {
-                    val tagString = (tags + "rating:$rating").joinToString(separator = " ") {
+                    val tagString = (tags + "rating:${rating.name.lowercase()}").joinToString(separator = " ") {
                         it.replace(' ', '_')
                     }
 
@@ -124,10 +126,17 @@ class NSFWImageExtension : Extension() {
 
         }
 
-        object KonaChan : NSFWImageCommands("Konachan", "get an explicit image from Konachan") {
-            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
-                val response: List<KonaChanResponse> = client.get("https://konachan.com/post.json") {
-                    val tagString = (tags + "rating:$rating" + "order:random").joinToString(separator = " ") {
+        class Boorulike(private val baseUrl: String, name: String) :
+            NSFWImageCommands(name, "get an explicit image from $name") {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
+                val ratingTag = when (rating) {
+                    Rating.GENERAL -> 's'
+                    Rating.SENSITIVE -> 'q'
+                    Rating.QUESTIONABLE -> 'q'
+                    Rating.EXPLICIT -> 'e'
+                }
+                val response: List<KonaChanResponse> = client.get("$baseUrl/post.json") {
+                    val tagString = (tags + "rating:$ratingTag" + "order:random").joinToString(separator = " ") {
                         it.replace(' ', '_')
                     }
 
@@ -155,11 +164,11 @@ class NSFWImageExtension : Extension() {
         }
 
         object E621 : NSFWImageCommands("E621", "get an explicit image from E621") {
-            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val ratingTag = when (rating) {
-                    "general" -> "safe"
-                    "sensitive" -> "questionable"
-                    else -> rating
+                    Rating.GENERAL -> "safe"
+                    Rating.SENSITIVE -> "questionable"
+                    else -> rating.name.lowercase()
                 }
                 val response: E6Response = client.get("https://e621.net/posts/random.json") {
                     val tagString = (tags + "rating:$ratingTag").joinToString(separator = " ") {
@@ -203,11 +212,11 @@ class NSFWImageExtension : Extension() {
         }
 
         object Gelbooru : NSFWImageCommands("Gelbooru", "get an explicit image from gelbooru") {
-            override suspend fun get(client: HttpClient, tags: List<String>, rating: String): ImageResult {
+            override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val response: GelResponse =
                     client.get("https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1&limit=1") {
                         val tagString =
-                            (tags + "rating:$rating" + "sort:random").joinToString(separator = " ") {
+                            (tags + "rating:${rating.name.lowercase()}" + "sort:random").joinToString(separator = " ") {
                                 it.replace(' ', '_')
                             }
                         parameter("tags", tagString)
@@ -263,19 +272,23 @@ class NSFWImageExtension : Extension() {
             description = "Give tags seperated by commas or leave empty."
         }
 
-        val rating by defaultingStringChoice {
+        val rating by defaultingEnumChoice<Rating> {
             name = "rating"
             description = "Select rating."
 
-            defaultValue = "explicit"
+            defaultValue = Rating.EXPLICIT
 
-            choices = listOf(
-                "explicit",
-                "questionable",
-                "sensitive",
-                "general"
-            ).associateBy { it.capitalizeWords() }.toMutableMap()
+            typeName = Rating::class.java.typeName
         }
+    }
+
+    enum class Rating : ChoiceEnum {
+        GENERAL,
+        SENSITIVE,
+        QUESTIONABLE,
+        EXPLICIT;
+
+        override val readableName = name.lowercase().capitalizeWords()
     }
 
     sealed class ImageResult {
