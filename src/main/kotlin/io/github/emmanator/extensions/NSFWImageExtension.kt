@@ -13,18 +13,24 @@ import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.respond
 import com.kotlindiscord.kord.extensions.types.respondEphemeral
 import com.kotlindiscord.kord.extensions.utils.capitalizeWords
+import com.kotlindiscord.kord.extensions.utils.hasNotStatus
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.followup.edit
+import dev.kord.core.entity.Message
 import dev.kord.rest.builder.message.modify.MessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
+import dev.kord.rest.request.RestRequestException
 import io.github.emmanator.TEST_SERVER_ID
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.time.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -48,13 +54,19 @@ class NSFWImageExtension : Extension() {
     }
 
     override suspend fun setup() {
+        publicSlashCommand {
+            name = "feet"
+        }
+
         listOf(
             NSFWImageCommands.Moebooru("https://danbooru.donmai.us/posts", "Danbooru"),
             NSFWImageCommands.Boorulike("https://konachan.com", "KonaChan"),
             NSFWImageCommands.Boorulike("https://yande.re", "Yandere"),
-            //NSFWImageCommands.Boorulike("https://xbooru.com", "xbooru"), This doesn't work, weird site
+            //NSFWImageCommands.Boorulike("https://xbooru.com", "xbooru"), This should work if the site had a proper API
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
+            //NSFWImageCommands.Gelbooru("https://hypnohub.net", "hyponohub"), This site would also just work if it had a proper random function
+            //NSFWImageCommands.Gelbooru("https://api.rule34.xxx/", "rule34"), Same as above, no working random function
         ).forEach { spec ->
             publicSlashCommand(NSFWImageExtension::NSFWCommandArguments) {
                 name = spec.name
@@ -69,6 +81,8 @@ class NSFWImageExtension : Extension() {
                 action {
                     val commandUser = user
 
+                    lateinit var job: Job
+
                     val message = respond {
                         content = "Please wait..."
 
@@ -79,6 +93,9 @@ class NSFWImageExtension : Extension() {
 
                                 action {
                                     if (user == commandUser) {
+                                        job.cancel()
+                                        job = createComponentRemovalJob(message)
+
                                         message.edit {
                                             setContent(spec, arguments)
                                         }
@@ -96,10 +113,11 @@ class NSFWImageExtension : Extension() {
 
                                 action {
                                     if (user == commandUser) {
+                                        job.cancel()
                                         message.delete()
                                     } else {
                                         respondEphemeral {
-                                            content = "Not your embed lmao"
+                                            content = "Not your embed"
                                         }
                                     }
                                 }
@@ -107,15 +125,27 @@ class NSFWImageExtension : Extension() {
                         }
                     }
 
+                    job = createComponentRemovalJob(message.message)
+
                     message.edit {
                         setContent(spec, arguments)
                     }
+                }
+            }
+        }
+    }
 
-                    delay(30.seconds.toJavaDuration())
+    private fun createComponentRemovalJob(message: Message): Job {
+        return kord.launch {
+            delay(10.seconds.toJavaDuration())
 
-                    message.edit {
-                        components = mutableListOf()
-                    }
+            try {
+                message.edit {
+                    components = mutableListOf()
+                }
+            } catch (e: RestRequestException) {
+                if (e.hasNotStatus(HttpStatusCode.NotFound)) {
+                    throw e
                 }
             }
         }

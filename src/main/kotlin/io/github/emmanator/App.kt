@@ -15,7 +15,8 @@ val TEST_SERVER_ID = Snowflake(
     env("TEST_SERVER")  // Get the test server ID from the env vars or a .env file
 )
 
-private val TOKEN = env("BOT_TOKEN")   // Get the bot' token from the env vars or a .env file
+
+private val TOKEN = env("BOT_TOKEN")   // Get the bot token from the env vars or a .env file
 
 @OptIn(PrivilegedIntent::class)
 suspend fun main() {
@@ -27,9 +28,10 @@ suspend fun main() {
             add(::StatusExtension)
             add(::NSFWImageExtension)
             add(::SFWImageExtension)
+            add(::ReminderExtension)
         }
 
-        presence { playing("haha ball") }
+        presence { watching("haha balls") }
 
         intents {
             +Intents.nonPrivileged

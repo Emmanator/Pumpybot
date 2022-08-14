@@ -54,7 +54,6 @@ class SFWImageExtension : Extension() {
                         }
                     }
                 }
-
             }
         }
     }
@@ -123,7 +122,6 @@ class SFWImageExtension : Extension() {
 
                     defaultValue = "neko"
                 }*/
-
         }
     }
 
