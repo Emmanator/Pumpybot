@@ -14,6 +14,7 @@ import com.kotlindiscord.kord.extensions.types.respondEphemeral
 import com.kotlindiscord.kord.extensions.utils.capitalizeWords
 import com.kotlindiscord.kord.extensions.utils.hasNotStatus
 import dev.kord.common.entity.ButtonStyle
+import dev.kord.common.entity.ChannelType
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.followup.edit
 import dev.kord.core.entity.Message
@@ -63,18 +64,12 @@ class NSFWImageExtension : Extension() {
             //NSFWImageCommands.Boorulike("https://xbooru.com", "xbooru"), This should work if the site had a proper API
             NSFWImageCommands.E621,
             NSFWImageCommands.Gelbooru
-            //NSFWImageCommands.Gelbooru("https://hypnohub.net", "hyponohub"), This site would also just work if it had a proper random function
+            //NSFWImageCommands.Gelbooru("https://hypnohub.net", "hypnohub"), This site would also just work if it had a proper random function
             //NSFWImageCommands.Gelbooru("https://api.rule34.xxx/", "rule34"), Same as above, no working random function
         ).forEach { spec ->
             publicSlashCommand(NSFWImageExtension::NSFWCommandArguments) {
                 name = spec.name
                 description = spec.description
-
-                check {
-                    channelIsNsfw()
-                }
-
-                guild(TEST_SERVER_ID)
 
                 action {
                     val channelObj = channel.asChannel()
