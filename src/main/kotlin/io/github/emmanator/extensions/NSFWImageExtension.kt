@@ -1,6 +1,5 @@
 package io.github.emmanator.extensions
 
-import com.kotlindiscord.kord.extensions.checks.channelIsNsfw
 import com.kotlindiscord.kord.extensions.commands.Arguments
 import com.kotlindiscord.kord.extensions.commands.application.slash.converters.ChoiceEnum
 import com.kotlindiscord.kord.extensions.commands.application.slash.converters.impl.defaultingEnumChoice
@@ -21,9 +20,8 @@ import dev.kord.core.entity.Message
 import dev.kord.rest.builder.message.modify.MessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.rest.request.RestRequestException
-import io.github.emmanator.TEST_SERVER_ID
 import io.ktor.client.*
-import io.ktor.client.call.*
+import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -79,13 +77,27 @@ class NSFWImageExtension : Extension() {
                 guild(TEST_SERVER_ID)
 
                 action {
+                    val channelObj = channel.asChannel()
+
+                    val nsfw = channelObj.data.nsfw.orElse(channelObj.type == ChannelType.DM)
+
+                    if (arguments.rating != Rating.GENERAL && !nsfw) {
+                        val message = respond {
+                            content =  "https://tenor.com/view/powerful-head-slap-anime-death-tragic-gif-14358509"
+                        }
+                        delay(10.seconds.toJavaDuration())
+                        message.delete()
+                        return@action
+                    }
+
+
                     val commandUser = user
+
 
                     lateinit var job: Job
 
                     val message = respond {
                         content = "Please wait..."
-
                         components {
                             publicButton {
                                 emoji("\uD83D\uDD01")
@@ -194,7 +206,7 @@ class NSFWImageExtension : Extension() {
         abstract suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult
 
         class Moebooru(private val baseUrl: String, name: String) :
-            NSFWImageCommands(name, "get an explicit image from danbooru") {
+            NSFWImageCommands(name, "get an image from $name") {
             override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val response: MoebooruResponse = client.get("$baseUrl/random.json") {
                     val tagString = (tags + "rating:${rating.name.lowercase()}").joinToString(separator = " ") {
@@ -224,7 +236,7 @@ class NSFWImageExtension : Extension() {
         }
 
         class Boorulike(private val baseUrl: String, name: String) :
-            NSFWImageCommands(name, "get an explicit image from $name") {
+            NSFWImageCommands(name, "get an image from $name") {
             override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val ratingTag = when (rating) {
                     Rating.GENERAL -> 's'
@@ -260,7 +272,7 @@ class NSFWImageExtension : Extension() {
             )
         }
 
-        object E621 : NSFWImageCommands("E621", "get an explicit image from E621") {
+        object E621 : NSFWImageCommands("E621", "get an image from E621") {
             override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val ratingTag = when (rating) {
                     Rating.GENERAL -> "safe"
@@ -308,7 +320,7 @@ class NSFWImageExtension : Extension() {
 
         }
 
-        object Gelbooru : NSFWImageCommands("Gelbooru", "get an explicit image from gelbooru") {
+        object Gelbooru : NSFWImageCommands("Gelbooru", "get an image from gelbooru") {
             override suspend fun get(client: HttpClient, tags: List<String>, rating: Rating): ImageResult {
                 val response: GelResponse =
                     client.get("https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1&limit=1") {
@@ -373,7 +385,7 @@ class NSFWImageExtension : Extension() {
             name = "rating"
             description = "Select rating."
 
-            defaultValue = Rating.EXPLICIT
+            defaultValue = Rating.GENERAL
 
             typeName = Rating::class.java.typeName
         }
