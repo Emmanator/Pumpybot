@@ -53,10 +53,6 @@ class NSFWImageExtension : Extension() {
     }
 
     override suspend fun setup() {
-        publicSlashCommand {
-            name = "feet"
-        }
-
         listOf(
             NSFWImageCommands.Moebooru("https://danbooru.donmai.us/posts", "Danbooru"),
             NSFWImageCommands.Boorulike("https://konachan.com", "KonaChan"),

@@ -68,7 +68,7 @@ class ReminderExtension : Extension() {
                 }
             }
 
-            ephemeralSubCommand({ CancelReminderArgs() }) {
+            ephemeralSubCommand<CancelReminderArgs>({ CancelReminderArgs() }) {
                 name = "cancel"
                 description = "Cancel a previously set reminder"
 
